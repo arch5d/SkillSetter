@@ -72,9 +72,10 @@ SkillSetter/
 ### 1. Clone the repository
 
 ```bash
+1. Clone repo
 git clone https://github.com/arch5d/SkillSetter.git
 cd SkillSetter
-Compile all Java files
+2. Compile all Java files
 javac *.java
 3. Run the application
 java Main
