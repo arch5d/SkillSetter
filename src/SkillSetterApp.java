@@ -2,19 +2,20 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Scanner;
 
-/**
- * Main console application and in-memory data store.
- */
+//Main console application and in-memory data store.
 public class SkillSetterApp {
     private final List<User> users;
     private final List<ConnectionRequest> requests;
     private final MatchEngine matchEngine;
+    private final SkillManager skillManager;
+    private final DataManager dataManager;
 
     public SkillSetterApp() {
-        users = new ArrayList<>();
+        skillManager = new SkillManager();
+        dataManager = new DataManager(skillManager);
+        users = dataManager.loadUsers();
         requests = new ArrayList<>();
         matchEngine = new MatchEngine();
-        seedSampleUsers();
     }
 
     public static void main(String[] args) {
@@ -67,11 +68,11 @@ public class SkillSetterApp {
         System.out.print("Choose an option: ");
     }
 
-    public User registerUser(String name, String email, List<String> skills,
-                             User.SkillLevel skillLevel, int availability,
-                             User.Role role, User.Goal goal, User.Mode mode) {
-        User user = new User(name, email, skills, skillLevel, availability, role, goal, mode);
+    public User registerUser(String name, String email, List<Skill> skills,
+                             int availability, User.Role role, User.Goal goal, User.Mode mode, Integer teamSize) {
+        User user = new User(name, email, skills, availability, role, goal, mode, teamSize);
         users.add(user);
+        dataManager.saveUsers(users);
         return user;
     }
 
@@ -80,16 +81,61 @@ public class SkillSetterApp {
         String name = scanner.nextLine();
         System.out.print("Email: ");
         String email = scanner.nextLine();
-        System.out.print("Skills (comma separated): ");
-        List<String> skills = parseSkills(scanner.nextLine());
-        User.SkillLevel skillLevel = promptSkillLevel(scanner);
+
+        List<Skill> skills = selectSkillsFromConsole(scanner);
+
         int availability = promptInt(scanner, "Availability hours per week: ");
         User.Role role = promptEnum(scanner, User.Role.values(), "Role");
         User.Goal goal = promptEnum(scanner, User.Goal.values(), "Goal");
         User.Mode mode = promptEnum(scanner, User.Mode.values(), "Mode");
 
-        User user = registerUser(name, email, skills, skillLevel, availability, role, goal, mode);
+        Integer teamSize = null;
+        if (role == User.Role.LEADER) {
+            teamSize = promptInt(scanner, "Desired team size: ");
+        }
+
+        User user = registerUser(name, email, skills, availability, role, goal, mode, teamSize);
         System.out.println("Registered: " + user.getSummary());
+    }
+
+    private List<Skill> selectSkillsFromConsole(Scanner scanner) {
+        List<Skill> selectedSkills = new ArrayList<>();
+        List<String> availableSkills = skillManager.getAvailableSkills();
+
+        System.out.println("Available skills:");
+        for (int i = 0; i < availableSkills.size(); i++) {
+            System.out.printf("%d. %s%n", i + 1, availableSkills.get(i));
+        }
+        System.out.println("0. Add custom skill");
+
+        while (true) {
+            System.out.print("Select skill number (or 0 for custom, -1 to finish): ");
+            int choice = promptInt(scanner, "");
+            if (choice == -1) break;
+
+            if (choice == 0) {
+                System.out.print("Enter custom skill name: ");
+                String customSkill = scanner.nextLine().trim();
+                if (!customSkill.isEmpty()) {
+                    Skill.SkillLevel level = promptSkillLevel(scanner);
+                    selectedSkills.add(skillManager.createSkill(customSkill, level));
+                    System.out.println("Added custom skill: " + customSkill);
+                }
+            } else if (choice > 0 && choice <= availableSkills.size()) {
+                String skillName = availableSkills.get(choice - 1);
+                Skill.SkillLevel level = promptSkillLevel(scanner);
+                selectedSkills.add(new Skill(skillName, level));
+                System.out.println("Added skill: " + skillName);
+            } else {
+                System.out.println("Invalid choice.");
+            }
+        }
+
+        return selectedSkills;
+    }
+
+    private Skill.SkillLevel promptSkillLevel(Scanner scanner) {
+        return promptEnum(scanner, Skill.SkillLevel.values(), "Skill level");
     }
 
     private void viewMatchesFromConsole(Scanner scanner) {
@@ -197,15 +243,8 @@ public class SkillSetterApp {
         return pending;
     }
 
-    public static List<String> parseSkills(String rawSkills) {
-        List<String> skills = new ArrayList<>();
-        for (String skill : rawSkills.split(",")) {
-            String trimmed = skill.trim();
-            if (!trimmed.isEmpty()) {
-                skills.add(trimmed);
-            }
-        }
-        return skills;
+    public List<Skill> parseSkillsInput(String input) {
+        return skillManager.parseSkillsInput(input);
     }
 
     private User chooseUser(Scanner scanner, String prompt) {
@@ -225,10 +264,6 @@ public class SkillSetterApp {
             return null;
         }
         return users.get(userChoice);
-    }
-
-    private User.SkillLevel promptSkillLevel(Scanner scanner) {
-        return promptEnum(scanner, User.SkillLevel.values(), "Skill level");
     }
 
     private <T extends Enum<T>> T promptEnum(Scanner scanner, T[] values, String label) {
@@ -256,14 +291,5 @@ public class SkillSetterApp {
                 System.out.println("Please enter a valid number.");
             }
         }
-    }
-
-    private void seedSampleUsers() {
-        registerUser("Ava", "ava@example.com", parseSkills("Java,UI,Presentation"),
-                User.SkillLevel.INTERMEDIATE, 8, User.Role.LEADER, User.Goal.HACKATHON, User.Mode.BUILD);
-        registerUser("Ben", "ben@example.com", parseSkills("Python,Testing,Research"),
-                User.SkillLevel.BEGINNER, 10, User.Role.LEARNER, User.Goal.HACKATHON, User.Mode.JOIN);
-        registerUser("Cara", "cara@example.com", parseSkills("Design,Marketing,Pitching"),
-                User.SkillLevel.ADVANCED, 7, User.Role.TEAMMATE, User.Goal.STARTUP, User.Mode.BUILD);
     }
 }

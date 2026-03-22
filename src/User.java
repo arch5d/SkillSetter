@@ -3,34 +3,28 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 
-/**
- * Represents a user in the SkillSetter system.
- */
+//Represents a user in the SkillSetter system.
+
 public class User {
     private final String name;
     private final String email;
-    private final List<String> skills;
-    private final SkillLevel skillLevel;
+    private final List<Skill> skills;
     private final int availabilityHoursPerWeek;
     private final Role role;
     private final Goal goal;
     private final Mode mode;
+    private final Integer teamSize; // Only for leaders
 
-    public User(String name, String email, List<String> skills, SkillLevel skillLevel,
-                int availabilityHoursPerWeek, Role role, Goal goal, Mode mode) {
+    public User(String name, String email, List<Skill> skills,
+                int availabilityHoursPerWeek, Role role, Goal goal, Mode mode, Integer teamSize) {
         this.name = name.trim();
         this.email = email.trim().toLowerCase();
-        this.skills = new ArrayList<>();
-        for (String skill : skills) {
-            if (skill != null && !skill.trim().isEmpty()) {
-                this.skills.add(skill.trim());
-            }
-        }
-        this.skillLevel = skillLevel;
+        this.skills = new ArrayList<>(skills);
         this.availabilityHoursPerWeek = availabilityHoursPerWeek;
         this.role = role;
         this.goal = goal;
         this.mode = mode;
+        this.teamSize = (role == Role.LEADER) ? teamSize : null;
     }
 
     public String getName() {
@@ -41,12 +35,8 @@ public class User {
         return email;
     }
 
-    public List<String> getSkills() {
+    public List<Skill> getSkills() {
         return Collections.unmodifiableList(skills);
-    }
-
-    public SkillLevel getSkillLevel() {
-        return skillLevel;
     }
 
     public int getAvailabilityHoursPerWeek() {
@@ -65,18 +55,32 @@ public class User {
         return mode;
     }
 
-    public boolean hasSkill(String skill) {
-        for (String userSkill : skills) {
-            if (userSkill.equalsIgnoreCase(skill)) {
+    public Integer getTeamSize() {
+        return teamSize;
+    }
+
+    public boolean hasSkill(String skillName) {
+        for (Skill skill : skills) {
+            if (skill.getName().equalsIgnoreCase(skillName)) {
                 return true;
             }
         }
         return false;
     }
 
+    public Skill getSkill(String skillName) {
+        for (Skill skill : skills) {
+            if (skill.getName().equalsIgnoreCase(skillName)) {
+                return skill;
+            }
+        }
+        return null;
+    }
+
     public String getSummary() {
-        return String.format("%s (%s) | Skills: %s | Level: %s | Availability: %d hrs/week | Role: %s | Goal: %s | Mode: %s",
-                name, email, skills, skillLevel, availabilityHoursPerWeek, role, goal, mode);
+        String teamSizeStr = (teamSize != null) ? " | Team Size: " + teamSize : "";
+        return String.format("%s (%s) | Skills: %s | Availability: %d hrs/week | Role: %s | Goal: %s | Mode: %s%s",
+                name, email, skills, availabilityHoursPerWeek, role, goal, mode, teamSizeStr);
     }
 
     @Override
@@ -99,12 +103,6 @@ public class User {
     @Override
     public int hashCode() {
         return Objects.hash(email.toLowerCase());
-    }
-
-    public enum SkillLevel {
-        BEGINNER,
-        INTERMEDIATE,
-        ADVANCED
     }
 
     public enum Role {

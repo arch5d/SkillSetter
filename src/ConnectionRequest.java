@@ -1,6 +1,6 @@
-/**
- * Represents a connection request between two users.
- */
+
+//Represents a connection request between two users.
+
 public class ConnectionRequest {
     private final User sender;
     private final User receiver;

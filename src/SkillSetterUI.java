@@ -15,9 +15,8 @@ import javax.swing.JTextArea;
 import javax.swing.JTextField;
 import javax.swing.ListSelectionModel;
 
-/**
- * Minimal Swing user interface for SkillSetter.
- */
+//Swing user interface for SkillSetter.
+
 public class SkillSetterUI {
     private final SkillSetterApp app;
     private final JFrame frame;
@@ -76,48 +75,57 @@ public class SkillSetterUI {
         JTextField emailField = new JTextField();
         JTextField skillsField = new JTextField();
         JTextField availabilityField = new JTextField();
-        JComboBox<User.SkillLevel> levelBox = new JComboBox<>(User.SkillLevel.values());
         JComboBox<User.Role> roleBox = new JComboBox<>(User.Role.values());
         JComboBox<User.Goal> goalBox = new JComboBox<>(User.Goal.values());
         JComboBox<User.Mode> modeBox = new JComboBox<>(User.Mode.values());
+        JTextField teamSizeField = new JTextField();
 
         JPanel panel = new JPanel(new GridLayout(0, 2, 6, 6));
         panel.add(new JLabel("Name"));
         panel.add(nameField);
         panel.add(new JLabel("Email"));
         panel.add(emailField);
-        panel.add(new JLabel("Skills (comma separated)"));
+        panel.add(new JLabel("Skills (comma separated with levels, e.g., Java(INTERMEDIATE), Python(BEGINNER))"));
         panel.add(skillsField);
         panel.add(new JLabel("Availability (hours/week)"));
         panel.add(availabilityField);
-        panel.add(new JLabel("Skill Level"));
-        panel.add(levelBox);
         panel.add(new JLabel("Role"));
         panel.add(roleBox);
         panel.add(new JLabel("Goal"));
         panel.add(goalBox);
         panel.add(new JLabel("Mode"));
         panel.add(modeBox);
+        panel.add(new JLabel("Team Size (for leaders only)"));
+        panel.add(teamSizeField);
 
         int result = JOptionPane.showConfirmDialog(frame, panel, "Register User",
                 JOptionPane.OK_CANCEL_OPTION, JOptionPane.PLAIN_MESSAGE);
 
         if (result == JOptionPane.OK_OPTION) {
             try {
+                List<Skill> skills = app.parseSkillsInput(skillsField.getText());
+                int availability = Integer.parseInt(availabilityField.getText().trim());
+                User.Role role = (User.Role) roleBox.getSelectedItem();
+                Integer teamSize = null;
+
+                if (role == User.Role.LEADER && !teamSizeField.getText().trim().isEmpty()) {
+                    teamSize = Integer.parseInt(teamSizeField.getText().trim());
+                }
+
                 app.registerUser(
                         nameField.getText(),
                         emailField.getText(),
-                        SkillSetterApp.parseSkills(skillsField.getText()),
-                        (User.SkillLevel) levelBox.getSelectedItem(),
-                        Integer.parseInt(availabilityField.getText().trim()),
-                        (User.Role) roleBox.getSelectedItem(),
+                        skills,
+                        availability,
+                        role,
                         (User.Goal) goalBox.getSelectedItem(),
-                        (User.Mode) modeBox.getSelectedItem()
+                        (User.Mode) modeBox.getSelectedItem(),
+                        teamSize
                 );
                 showUsersOverview();
                 JOptionPane.showMessageDialog(frame, "User registered successfully.");
             } catch (NumberFormatException exception) {
-                JOptionPane.showMessageDialog(frame, "Availability must be a number.");
+                JOptionPane.showMessageDialog(frame, "Availability and team size must be numbers.");
             }
         }
     }
