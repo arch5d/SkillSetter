@@ -25,10 +25,23 @@ public class MatchEngine {
     public MatchResult calculateMatch(User firstUser, User secondUser) {
         int score = 0;
         List<String> reasons = new ArrayList<>();
+        List<Skill> complementarySkills = new ArrayList<>();
 
-        // Complementary skills with level consideration
+        int complementaryCount = 0;
+        for (Skill s2 : secondUser.getSkills()) {
+            if (!firstUser.hasSkill(s2.getName())) {
+                complementaryCount++;
+                complementarySkills.add(s2);
+            }
+        }
+
+        // Keep the original weighted skill compatibility and include reasons.
         int skillScore = calculateSkillCompatibility(firstUser, secondUser, reasons);
         score += skillScore;
+
+        if (complementaryCount == 0) {
+            reasons.add("No additional complementary skills from this profile");
+        }
 
         // Similar time devoted
         int timeScore = calculateTimeCompatibility(firstUser, secondUser, reasons);
@@ -47,7 +60,7 @@ public class MatchEngine {
         }
 
         score = Math.min(score, 100);
-        return new MatchResult(secondUser, score, reasons);
+        return new MatchResult(secondUser, score, reasons, complementarySkills);
     }
 
     private int calculateSkillCompatibility(User firstUser, User secondUser, List<String> reasons) {
@@ -170,11 +183,13 @@ public class MatchEngine {
         private final User matchedUser;
         private final int score;
         private final List<String> reasons;
+        private final List<Skill> complementarySkills;
 
-        public MatchResult(User matchedUser, int score, List<String> reasons) {
+        public MatchResult(User matchedUser, int score, List<String> reasons, List<Skill> complementarySkills) {
             this.matchedUser = matchedUser;
             this.score = score;
             this.reasons = new ArrayList<>(reasons);
+            this.complementarySkills = new ArrayList<>(complementarySkills);
         }
 
         public User getMatchedUser() {
@@ -187,6 +202,10 @@ public class MatchEngine {
 
         public List<String> getReasons() {
             return Collections.unmodifiableList(reasons);
+        }
+        
+        public List<Skill> getComplementarySkills() {
+            return Collections.unmodifiableList(complementarySkills);
         }
 
         public String toDisplayString() {

@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SkillSetter - Find Your Team</title>
+    <link rel="stylesheet" href="style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <header class="header">
+        <div class="logo">SkillSetter</div>
+        <nav id="nav-actions" class="hidden">
+            <button onclick="deleteProfile()" class="btn-secondary" style="color: var(--error); border-color: var(--error);">Delete Profile</button>
+            <button onclick="logout()" class="btn-secondary">Logout</button>
+        </nav>
+    </header>
+
+    <main class="container">
+        <!-- Auth Section -->
+        <section id="auth-section" class="card">
+            <h2>Welcome to SkillSetter</h2>
+            <p>Find compatible teammates based on skills, goals, and availability.</p>
+            <div class="tabs">
+                <button class="tab active" onclick="showLogin(true)">Login</button>
+                <button class="tab" onclick="showLogin(false)">Register</button>
+            </div>
+
+            <div id="login-form">
+                <div class="form-group">
+                    <label>Email</label>
+                    <input type="email" id="login-email" placeholder="Enter your email" />
+                </div>
+                <button class="btn-primary full-width" onclick="login()">Login</button>
+                <div id="login-error" class="error-msg"></div>
+            </div>
+
+            <div id="register-form" class="hidden">
+                <div class="form-group">
+                    <label>Name</label>
+                    <input type="text" id="reg-name" placeholder="John Doe" />
+                </div>
+                <div class="form-group">
+                    <label>Email</label>
+                    <input type="email" id="reg-email" placeholder="john@example.com" />
+                </div>
+                <div class="form-group">
+                    <label>Availability (hrs/week)</label>
+                    <input type="number" id="reg-availability" placeholder="10" />
+                </div>
+                <div class="form-group">
+                    <label>Role</label>
+                    <select id="reg-role" onchange="toggleTeamSize()">
+                        <option value="TEAMMATE">Teammate</option>
+                        <option value="LEADER">Leader</option>
+                        <option value="LEARNER">Learner</option>
+                    </select>
+                </div>
+                <div class="form-group hidden" id="team-size-group">
+                    <label>Team Size Preference</label>
+                    <input type="number" id="reg-teamsize" placeholder="4" />
+                </div>
+                <div class="form-group">
+                    <label>Goal</label>
+                    <select id="reg-goal">
+                        <option value="HACKATHON">Hackathon</option>
+                        <option value="PBL">PBL</option>
+                        <option value="STARTUP">Startup</option>
+                        <option value="STUDY">Study Group</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Team Mode</label>
+                    <select id="reg-mode">
+                        <option value="JOIN">Join Team (Looking for a team)</option>
+                        <option value="BUILD">Build Team (Hosting a team)</option>
+                    </select>
+                </div>
+                
+                <div class="skills-section">
+                    <h3>Skills</h3>
+                    <div class="skill-input-group">
+                        <input type="text" id="skill-name" placeholder="E.g., Java, React, UI/UX" />
+                        <select id="skill-level">
+                            <option value="BEGINNER">Beginner</option>
+                            <option value="INTERMEDIATE">Intermediate</option>
+                            <option value="ADVANCED">Advanced</option>
+                            <option value="EXPERT">Expert</option>
+                        </select>
+                        <button class="btn-secondary" onclick="addSkill()">Add</button>
+                    </div>
+                    <ul id="skill-list" class="skill-list"></ul>
+                </div>
+
+                <button class="btn-primary full-width" onclick="register()">Create Profile</button>
+                <div id="reg-error" class="error-msg"></div>
+            </div>
+        </section>
+
+        <!-- Dashboard Section -->
+        <section id="dashboard-section" class="hidden">
+            <div class="dashboard-header">
+                <h2>Your Matches</h2>
+                <div id="user-info" class="badge"></div>
+            </div>
+            <p id="dashboard-subtitle">Here are your highest compatibility matches based on your profile.</p>
+            
+            <div class="actions-row">
+                <button id="btn-matches" class="btn-primary" onclick="showTab('matches')">Matches</button>
+                <button id="btn-requests" class="btn-secondary" onclick="showTab('requests')">Requests</button>
+            </div>
+
+            <div id="matches-container" class="matches-grid">
+                <!-- Matches injected via JS -->
+            </div>
+            
+            <div id="requests-container" class="matches-grid hidden">
+                <!-- Requests injected via JS -->
+            </div>
+        </section>
+
+        <!-- Modal for Request Details -->
+        <div id="contact-modal" class="modal hidden">
+            <div class="modal-content card">
+                <h3>Contact & Connect</h3>
+                <p>You have decided to accept this match. Here are the contact details:</p>
+                <div id="modal-details" class="contact-details"></div>
+                <button class="btn-primary" style="margin-top: 1rem;" onclick="closeModal()">Done</button>
+            </div>
+        </div>
+
+    </main>
+
+    <script src="app.js"></script>
+</body>
+</html>

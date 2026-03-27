@@ -16,9 +16,9 @@ The idea is simple — instead of randomly forming teams for hackathons, project
 - Join / Build team modes with team size specification
 - Connection Request System
 - Contact sharing after acceptance
-- Menu-driven console interface
-- Basic UI (Swing - optional/extendable)
-- Data persistence (users saved to file)
+- Java REST backend with web frontend (HTML/CSS/JS)
+- JDBC persistence with SQLite database
+- Profile deletion support
 - Predefined skills + custom skill addition
 
 ---
@@ -57,24 +57,27 @@ The idea is simple — instead of randomly forming teams for hackathons, project
 
 - Language: Java
 - Concepts: OOP, Collections, File I/O
-- UI: Java Swing (basic)
-- Data Storage: Simple text file persistence
-- No external dependencies
+- Backend: Java HTTP Server (`com.sun.net.httpserver`)
+- Frontend: HTML, CSS, JavaScript
+- Data Storage: JDBC + SQLite (`skillsetter.db`)
 
 ---
 
 ## 📂 Project Structure
 
 SkillSetter/
-│── Skill.java (skill with level representation)
-│── SkillManager.java (manages available skills)
-│── User.java (user model)
-│── MatchEngine.java (matching algorithm)
-│── ConnectionRequest.java (request system)
-│── DataManager.java (file persistence)
-│── SkillSetterApp.java (main application)
-│── SkillSetterUI.java (Swing UI)
-│── users.txt (data file - created automatically)
+│── src/
+│   │── ApiServer.java (REST API server)
+│   │── DatabaseManager.java (JDBC persistence layer)
+│   │── Skill.java, SkillManager.java, User.java, MatchEngine.java
+│   │── ConnectionRequest.java
+│── frontend/
+│   │── index.html
+│   │── style.css
+│   │── app.js
+│── lib/
+│   │── sqlite-jdbc.jar
+│── skillsetter.db (created automatically on first run)
 
 ---
 
@@ -92,20 +95,62 @@ cd SkillSetter
 
 ### 2. Compile all Java files
 ```bash
-javac -cp src src/*.java
+javac -cp ".;src;lib/*" src/*.java src/org/slf4j/*.java
 ```
 
-### 3. Run the application
+### 3. Run the backend API
 
-**Console Version:**
+Default port (8080):
 ```bash
-java -cp src SkillSetterApp
+java -cp "src;lib/sqlite-jdbc.jar" ApiServer
 ```
 
-**GUI Version:**
+Custom port (example 8081):
 ```bash
-java -cp src SkillSetterApp ui
+java -cp "src;lib/sqlite-jdbc.jar" ApiServer 8081
 ```
+
+### 4. Open the frontend
+
+Open `frontend/index.html` in browser.
+
+If backend is not on `8080`, open with `api` query param:
+```text
+frontend/index.html?api=http://localhost:8081
+```
+
+### Quick start on Windows
+
+Run backend (default 8080):
+```bash
+run-backend.bat
+```
+
+Run backend on custom port:
+```bash
+run-backend.bat 8090
+```
+
+Open frontend:
+```bash
+open-frontend.bat
+```
+
+Open frontend targeting custom backend port:
+```bash
+open-frontend.bat 8090
+```
+
+### API Endpoints
+
+- `POST /api/register` register or update profile
+- `GET /api/user?email=...` fetch single user profile
+- `GET /api/users` list all users
+- `GET /api/matches?email=...` list ranked matches with complementary skills
+- `POST /api/requests` send connection request
+- `GET /api/requests?email=...` receiver inbox (accept/reject after login)
+- `PUT /api/requests` update request status (`ACCEPTED` or `REJECTED`)
+- `DELETE /api/deleteProfile?email=...` delete profile and related data
 
 ---
 
@@ -143,9 +188,9 @@ The matching system evaluates compatibility across multiple dimensions:
 
 ## 💾 Data Persistence
 
-- User data is automatically saved to `users.txt`
-- Data persists between application runs
-- No database required - simple file-based storage
+- Data is stored in `skillsetter.db` using JDBC (SQLite)
+- User profile deletion cascades to skills and requests
+- Request acceptance is receiver-owned and enforced on backend
 
 ---
 
