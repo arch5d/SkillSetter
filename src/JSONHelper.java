@@ -87,6 +87,7 @@ public class JSONHelper {
               .append("\"senderEmail\":\"").append(escape(r.getSenderEmail())).append("\",")
                             .append("\"senderName\":\"").append(escape(r.getSenderName())).append("\",")
               .append("\"receiverEmail\":\"").append(escape(r.getReceiverEmail())).append("\",")
+                            .append("\"receiverName\":\"").append(escape(r.getReceiverName())).append("\",")
               .append("\"status\":\"").append(escape(r.getStatus())).append("\"")
               .append("}");
             if (i < requests.size() - 1) sb.append(",");

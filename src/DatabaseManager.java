@@ -1,19 +1,52 @@
 import java.sql.*;
 import java.util.ArrayList;
 import java.util.List;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.io.IOException;
 
 public class DatabaseManager {
-    private static final String DB_URL = "jdbc:sqlite:skillsetter.db";
+    private final String dbUrl;
     private final SkillManager skillManager;
 
     public DatabaseManager(SkillManager skillManager) {
         this.skillManager = skillManager;
+        this.dbUrl = resolveDbUrl();
         try {
             Class.forName("org.sqlite.JDBC");
         } catch (ClassNotFoundException e) {
             throw new IllegalStateException("SQLite JDBC driver not found on classpath", e);
         }
+        System.out.println("SkillSetter using DB file: " + this.dbUrl.replace("jdbc:sqlite:", ""));
         initTables();
+    }
+
+    private String resolveDbUrl() {
+        String configuredPath = System.getProperty("skillsetter.db.path");
+        if (configuredPath == null || configuredPath.trim().isEmpty()) {
+            configuredPath = System.getenv("SKILLSETTER_DB_PATH");
+        }
+
+        Path dbFile;
+        if (configuredPath != null && !configuredPath.trim().isEmpty()) {
+            dbFile = Paths.get(configuredPath.trim());
+        } else {
+            // Default outside workspace to avoid frontend auto-refresh when DB is updated.
+            dbFile = Paths.get(System.getProperty("user.home"), ".skillsetter", "skillsetter.db");
+        }
+
+        Path absolute = dbFile.toAbsolutePath();
+        Path parent = absolute.getParent();
+        if (parent != null) {
+            try {
+                Files.createDirectories(parent);
+            } catch (IOException e) {
+                throw new IllegalStateException("Failed to prepare database directory: " + parent, e);
+            }
+        }
+
+        return "jdbc:sqlite:" + absolute;
     }
 
     private void initTables() {
@@ -48,7 +81,7 @@ public class DatabaseManager {
     }
 
     private Connection openConnection() throws SQLException {
-        Connection conn = DriverManager.getConnection(DB_URL);
+        Connection conn = DriverManager.getConnection(dbUrl);
         try (Statement pragma = conn.createStatement()) {
             pragma.execute("PRAGMA foreign_keys = ON");
         }
@@ -279,6 +312,31 @@ public class DatabaseManager {
                     rs.getString("sender_email"),
                     rs.getString("sender_name"),
                     receiverEmail,
+                    null,
+                    rs.getString("status")
+                ));
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return requests;
+    }
+
+    public List<ConnectionRequest> getSentRequests(String senderEmail) {
+        List<ConnectionRequest> requests = new ArrayList<>();
+        String sql = "SELECT r.id, r.receiver_email, u.name AS receiver_name, r.status " +
+                "FROM requests r JOIN users u ON u.email = r.receiver_email WHERE r.sender_email = ? ORDER BY r.id DESC";
+        try (Connection conn = openConnection();
+             PreparedStatement pstmt = conn.prepareStatement(sql)) {
+            pstmt.setString(1, senderEmail);
+            ResultSet rs = pstmt.executeQuery();
+            while (rs.next()) {
+                requests.add(new ConnectionRequest(
+                    rs.getInt("id"),
+                    senderEmail,
+                    null,
+                    rs.getString("receiver_email"),
+                    rs.getString("receiver_name"),
                     rs.getString("status")
                 ));
             }

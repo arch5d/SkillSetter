@@ -246,8 +246,13 @@ public class ApiServer {
                 Map<String, String> query = parseQuery(exchange.getRequestURI().getQuery());
                 String email = query.get("email");
                 if (email != null && !email.trim().isEmpty()) {
-                    List<ConnectionRequest> reqs = dbManager.getIncomingRequests(email);
-                    sendResponse(exchange, 200, JSONHelper.connectionRequestsToJSON(reqs));
+                    List<ConnectionRequest> incoming = dbManager.getIncomingRequests(email);
+                    List<ConnectionRequest> sent = dbManager.getSentRequests(email);
+                    String response = "{" +
+                            "\"incoming\":" + JSONHelper.connectionRequestsToJSON(incoming) + "," +
+                            "\"sent\":" + JSONHelper.connectionRequestsToJSON(sent) +
+                            "}";
+                    sendResponse(exchange, 200, response);
                     return;
                 }
             } else if ("POST".equalsIgnoreCase(method)) {

@@ -1,9 +1,71 @@
 const apiFromQuery = new URLSearchParams(window.location.search).get('api');
 const API_BASE = window.localStorage.getItem('skillsetter_api_base') || apiFromQuery || 'http://localhost:8080';
 const API_URL = `${API_BASE}/api`;
+const SESSION_KEY = 'skillsetter_current_user';
+const OPTIMISTIC_SENT_KEY = 'skillsetter_optimistic_sent';
+const ACTIVE_TAB_KEY = 'skillsetter_active_tab';
+const DEBUG = true;
 
 let currentUser = null;
 let currentSkills = [];
+let currentIncomingRequests = [];
+let currentTab = window.localStorage.getItem(ACTIVE_TAB_KEY) || 'matches';
+
+function debugLog(message, details) {
+    if (!DEBUG) {
+        return;
+    }
+
+    const timestamp = new Date().toISOString();
+    if (details !== undefined) {
+        console.log(`[SkillSetter][${timestamp}] ${message}`, details);
+    } else {
+        console.log(`[SkillSetter][${timestamp}] ${message}`);
+    }
+}
+
+function getOptimisticSentRequests() {
+    try {
+        const raw = window.localStorage.getItem(OPTIMISTIC_SENT_KEY);
+        if (!raw) {
+            return [];
+        }
+        const parsed = JSON.parse(raw);
+        return Array.isArray(parsed) ? parsed : [];
+    } catch (error) {
+        debugLog('Failed parsing optimistic sent cache', { error: error.message });
+        return [];
+    }
+}
+
+function setOptimisticSentRequests(requests) {
+    window.localStorage.setItem(OPTIMISTIC_SENT_KEY, JSON.stringify(requests));
+}
+
+function upsertOptimisticSentRequest(entry) {
+    const existing = getOptimisticSentRequests();
+    const withoutSame = existing.filter(r =>
+        !(r.senderEmail === entry.senderEmail && r.receiverEmail === entry.receiverEmail)
+    );
+    withoutSame.push(entry);
+    setOptimisticSentRequests(withoutSame);
+}
+
+function pruneOptimisticSentRequests(serverSentRequests) {
+    const existing = getOptimisticSentRequests();
+    if (!existing.length) {
+        return;
+    }
+
+    const keep = existing.filter(localReq => {
+        return !serverSentRequests.some(serverReq =>
+            serverReq.receiverEmail === localReq.receiverEmail &&
+            serverReq.status === localReq.status
+        );
+    });
+
+    setOptimisticSentRequests(keep);
+}
 
 // UI State Management
 function showLogin(isLogin) {
@@ -57,6 +119,7 @@ async function login() {
     }
 
     try {
+        debugLog('Login attempt', { email });
         const response = await fetch(`${API_URL}/user?email=${encodeURIComponent(email)}`);
         if (!response.ok) {
             document.getElementById('login-error').innerText = 'User not found. Try registering.';
@@ -66,11 +129,14 @@ async function login() {
         const user = await response.json();
         if (user) {
             currentUser = user;
+            window.localStorage.setItem(SESSION_KEY, JSON.stringify(currentUser));
+            debugLog('Login success', { email: currentUser.email });
             showDashboard();
         } else {
             document.getElementById('login-error').innerText = 'User not found. Try registering.';
         }
     } catch (e) {
+        debugLog('Login failed', { error: e.message });
         document.getElementById('login-error').innerText = 'Error connecting to server. Is it running?';
     }
 }
@@ -112,19 +178,28 @@ async function register() {
         if (response.ok) {
             const me = await fetch(`${API_URL}/user?email=${encodeURIComponent(email)}`);
             currentUser = await me.json();
+            window.localStorage.setItem(SESSION_KEY, JSON.stringify(currentUser));
+            debugLog('Registration success', { email: currentUser.email });
             showDashboard();
         } else {
             const err = await response.json().catch(() => ({}));
             document.getElementById('reg-error').innerText = err.error || 'Registration failed.';
         }
     } catch (e) {
+        debugLog('Registration failed', { error: e.message });
         document.getElementById('reg-error').innerText = 'Error connecting to server.';
     }
 }
 
 function logout() {
+    debugLog('Logout called', { currentUser: currentUser ? currentUser.email : null });
+    console.trace('[SkillSetter] Logout trace');
     currentUser = null;
     currentSkills = [];
+    currentIncomingRequests = [];
+    currentTab = 'matches';
+    window.localStorage.removeItem(SESSION_KEY);
+    window.localStorage.removeItem(ACTIVE_TAB_KEY);
     document.getElementById('nav-actions').classList.add('hidden');
     document.getElementById('auth-section').classList.remove('hidden');
     document.getElementById('dashboard-section').classList.add('hidden');
@@ -139,10 +214,13 @@ function showDashboard() {
     
     document.getElementById('user-info').innerText = `${currentUser.name} | ${currentUser.role} | Mode: ${currentUser.mode}`;
     
-    showTab('matches');
+    showTab(currentTab === 'requests' ? 'requests' : 'matches');
 }
 
 function showTab(tab) {
+    currentTab = tab === 'requests' ? 'requests' : 'matches';
+    window.localStorage.setItem(ACTIVE_TAB_KEY, currentTab);
+
     if (tab === 'matches') {
         document.getElementById('matches-container').classList.remove('hidden');
         document.getElementById('requests-container').classList.add('hidden');
@@ -170,6 +248,7 @@ async function loadMatches() {
     container.innerHTML = '<p>Loading matches...</p>';
 
     try {
+        debugLog('Loading matches', { user: currentUser ? currentUser.email : null });
         const response = await fetch(`${API_URL}/matches?email=${encodeURIComponent(currentUser.email)}`);
         const matches = await response.json();
         
@@ -207,20 +286,27 @@ async function loadMatches() {
                 </div>
 
                 <div class="match-actions">
-                    <button class="btn-secondary" onclick="ignoreMatch(this)">Hide</button>
-                    <button class="btn-primary" onclick="sendRequest('${match.user.email}', this)">Connect</button>
+                    <button type="button" class="btn-secondary" onclick="ignoreMatch(this)">Hide</button>
+                    <button type="button" class="btn-primary" onclick='return sendRequest(event, ${JSON.stringify(match.user.email)}, ${JSON.stringify(match.user.name)}, this)'>Connect</button>
                 </div>
             </div>
         `).join('');
     } catch (e) {
+        debugLog('Loading matches failed', { error: e.message });
         container.innerHTML = '<p class="error-msg">Error loading matches.</p>';
     }
 }
 
-async function sendRequest(receiverEmail, btn) {
+async function sendRequest(evt, receiverEmail, receiverName, btn) {
+    if (evt) {
+        evt.preventDefault();
+        evt.stopPropagation();
+    }
+
     btn.innerText = 'Sending...';
     btn.disabled = true;
     try {
+        debugLog('Send request start', { sender: currentUser ? currentUser.email : null, receiverEmail, receiverName });
         await fetch(`${API_URL}/requests`, {
             method: 'POST',
             headers: {
@@ -233,12 +319,27 @@ async function sendRequest(receiverEmail, btn) {
                 throw new Error(err.error || 'Unable to send request');
             }
         });
+
+        if (currentUser && currentUser.email) {
+            upsertOptimisticSentRequest({
+                id: `local-${Date.now()}`,
+                senderEmail: currentUser.email,
+                receiverEmail,
+                receiverName,
+                status: 'PENDING'
+            });
+        }
+
         btn.innerText = 'Request Sent';
         btn.classList.replace('btn-primary', 'btn-secondary');
+        debugLog('Send request success', { receiverEmail });
     } catch (e) {
+        debugLog('Send request failed', { error: e.message, receiverEmail });
         btn.innerText = e.message;
         btn.disabled = false;
     }
+
+    return false;
 }
 
 async function loadRequests() {
@@ -246,20 +347,36 @@ async function loadRequests() {
     container.innerHTML = '<p>Loading requests...</p>';
 
     try {
+        debugLog('Loading requests', { user: currentUser ? currentUser.email : null });
         const response = await fetch(`${API_URL}/requests?email=${encodeURIComponent(currentUser.email)}`);
-        const requests = await response.json();
-        
-        if (requests.length === 0) {
-            container.innerHTML = '<p>No pending requests.</p>';
+        const data = await response.json();
+        const incoming = Array.isArray(data) ? data : (data.incoming || []);
+        const sent = Array.isArray(data) ? [] : (data.sent || []);
+        const optimisticSent = getOptimisticSentRequests().filter(r => currentUser && r.senderEmail === currentUser.email);
+        const mergedSent = [...sent];
+        optimisticSent.forEach(localReq => {
+            const existsOnServer = mergedSent.some(serverReq => serverReq.receiverEmail === localReq.receiverEmail && serverReq.status === localReq.status);
+            if (!existsOnServer) {
+                mergedSent.push(localReq);
+            }
+        });
+
+        pruneOptimisticSentRequests(sent);
+
+        currentIncomingRequests = incoming;
+        debugLog('Requests fetched', { incoming: incoming.length, sent: sent.length, mergedSent: mergedSent.length });
+
+        if (incoming.length === 0 && mergedSent.length === 0) {
+            container.innerHTML = '<p>No requests yet.</p>';
             return;
         }
 
-        container.innerHTML = requests.map(req => `
+        const incomingHtml = incoming.map(req => `
             <div class="match-card">
                 <div class="match-header">
                     <div>
                         <div class="match-name">${req.senderName || req.senderEmail}</div>
-                        <div class="match-role">Status: ${req.status}</div>
+                        <div class="match-role">Incoming | Status: ${req.status}</div>
                     </div>
                 </div>
                 ${req.status === 'ACCEPTED' ? `
@@ -271,19 +388,61 @@ async function loadRequests() {
                 ` : ''}
                 ${req.status === 'PENDING' ? `
                 <div class="match-actions">
-                    <button class="btn-secondary" onclick='updateRequest(${req.id}, "REJECTED", ${JSON.stringify(req.senderName || req.senderEmail)}, ${JSON.stringify(req.senderEmail)})'>Decline</button>
-                    <button class="btn-primary" onclick='updateRequest(${req.id}, "ACCEPTED", ${JSON.stringify(req.senderName || req.senderEmail)}, ${JSON.stringify(req.senderEmail)})'>Accept</button>
+                    <button type="button" class="btn-secondary" onclick="return updateRequest(event, ${req.id}, 'REJECTED')">Decline</button>
+                    <button type="button" class="btn-primary" onclick="return updateRequest(event, ${req.id}, 'ACCEPTED')">Accept</button>
                 </div>
                 ` : ''}
             </div>
         `).join('');
+
+        const sentHtml = mergedSent.map(req => `
+            <div class="match-card">
+                <div class="match-header">
+                    <div>
+                        <div class="match-name">${req.receiverName || req.receiverEmail}</div>
+                        <div class="match-role">Sent | Status: ${req.status}</div>
+                    </div>
+                </div>
+                <div class="match-info">
+                    <strong>Recipient:</strong><br/>
+                    Name: ${req.receiverName || req.receiverEmail}<br/>
+                    Email: <a href="mailto:${req.receiverEmail}">${req.receiverEmail}</a>
+                </div>
+                ${req.status === 'ACCEPTED' ? `
+                <div class="match-info">
+                    <strong>Result:</strong><br/>
+                    Your request was accepted. You can now contact them.
+                </div>
+                ` : ''}
+                ${req.status === 'REJECTED' ? `
+                <div class="match-info">
+                    <strong>Result:</strong><br/>
+                    Your request was declined.
+                </div>
+                ` : ''}
+            </div>
+        `).join('');
+
+        container.innerHTML = `
+            <h3 style="margin-bottom: 0.8rem;">Incoming Requests</h3>
+            ${incoming.length ? incomingHtml : '<p>No incoming requests.</p>'}
+            <h3 style="margin: 1.4rem 0 0.8rem;">Sent Requests</h3>
+            ${mergedSent.length ? sentHtml : '<p>No sent requests.</p>'}
+        `;
     } catch (e) {
+        debugLog('Loading requests failed', { error: e.message });
         container.innerHTML = '<p class="error-msg">Error loading requests.</p>';
     }
 }
 
-async function updateRequest(id, status, senderName, senderEmail) {
+async function updateRequest(evt, id, status) {
+    if (evt) {
+        evt.preventDefault();
+        evt.stopPropagation();
+    }
+
     try {
+        debugLog('Update request', { id, status, actor: currentUser ? currentUser.email : null });
         const response = await fetch(`${API_URL}/requests`, {
             method: 'PUT',
             headers: {
@@ -297,13 +456,27 @@ async function updateRequest(id, status, senderName, senderEmail) {
             throw new Error(err.error || 'Unable to update request');
         }
 
+        const selectedRequest = currentIncomingRequests.find(r => Number(r.id) === Number(id));
+
+        await loadRequests();
+        showTab('requests');
+
         if (status === 'ACCEPTED') {
-            showContact(senderName, senderEmail);
+            const subtitle = document.getElementById('dashboard-subtitle');
+            if (selectedRequest && subtitle) {
+                subtitle.innerText = `Accepted ${selectedRequest.senderName || selectedRequest.senderEmail}. Contact details are now visible in Incoming Requests.`;
+            }
+        } else if (status === 'REJECTED') {
+            const subtitle = document.getElementById('dashboard-subtitle');
+            if (subtitle) {
+                subtitle.innerText = 'Request declined successfully.';
+            }
         }
-        loadRequests(); // refresh
     } catch (e) {
         alert(e.message || 'Error updating request.');
     }
+
+    return false;
 }
 
 async function deleteProfile() {
@@ -338,3 +511,22 @@ function closeModal() {
 // Initial state setup
 document.getElementById('reg-role').value = 'TEAMMATE';
 toggleTeamSize();
+
+// Restore logged-in user after accidental refresh.
+try {
+    const savedUser = window.localStorage.getItem(SESSION_KEY);
+    if (savedUser) {
+        const parsed = JSON.parse(savedUser);
+        if (parsed && parsed.email) {
+            currentUser = parsed;
+            showDashboard();
+        }
+    }
+} catch (error) {
+    debugLog('Session restore failed', { error: error.message });
+    window.localStorage.removeItem(SESSION_KEY);
+}
+
+window.addEventListener('beforeunload', () => {
+    debugLog('beforeunload fired', { user: currentUser ? currentUser.email : null });
+});

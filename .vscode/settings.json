@@ -1,0 +1,7 @@
+{
+  "liveServer.settings.ignoreFiles": [
+    "**/skillsetter.db",
+    "**/*.class",
+    "**/users.txt"
+  ]
+}
