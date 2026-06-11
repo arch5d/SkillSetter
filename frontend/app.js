@@ -34,6 +34,12 @@ document.addEventListener('DOMContentLoaded', () => {
   setupTheme();
   setupSidebar();
   loadUsers();  // preload for all-members view
+
+  const savedEmail = localStorage.getItem('skillsetter_email');
+  if (savedEmail) {
+    document.getElementById('regEmail').value = savedEmail;
+    loadProfile();
+  }
 });
 
 /* ─── BUILD SKILL DROPDOWN ─── */
@@ -63,6 +69,8 @@ function switchView(viewId) {
   document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
   document.getElementById('view-' + viewId)?.classList.add('active');
   if (viewId === 'users' && allUsers.length === 0) loadUsers();
+  if (viewId === 'matches') findMatches();
+  if (viewId === 'inbox') loadInbox();
 }
 
 /* ─── THEME ─── */
@@ -182,6 +190,7 @@ async function registerUser() {
     const text = await res.text();
     if (res.ok) {
       currentUserEmail = email;
+      localStorage.setItem('skillsetter_email', email);
       showStatus('✓ ' + text, 'success');
       toast('Profile saved!', 'success');
       updateSidebarUser(name, email);
@@ -224,6 +233,7 @@ async function loadProfile() {
     renderChips();
 
     currentUserEmail = email;
+    localStorage.setItem('skillsetter_email', email);
     updateSidebarUser(user.name, email);
     showStatus('Profile loaded!', 'success');
     toast('Profile loaded', 'success');
@@ -248,6 +258,7 @@ async function deleteProfile() {
       document.getElementById('regName').value = '';
       document.getElementById('regEmail').value = '';
       currentUserEmail = '';
+      localStorage.removeItem('skillsetter_email');
       updateSidebarUser(null, null);
       showStatus('Profile deleted.', 'success');
       toast('Profile deleted', 'info');
@@ -264,8 +275,8 @@ async function deleteProfile() {
    FIND MATCHES — GET /api/matches?email=...
 ════════════════════════════════════════ */
 async function findMatches() {
-  const email = document.getElementById('matchEmailInput').value.trim();
-  if (!email) { toast('Enter your email', 'error'); return; }
+  const email = currentUserEmail;
+  if (!email) { showEl('matchesEmpty', true); document.getElementById('matchesGrid').innerHTML = '<p style="text-align:center;width:100%">Please register or load your profile first.</p>'; return; }
 
   showEl('matchesLoading', true);
   showEl('matchesEmpty', false);
@@ -289,34 +300,37 @@ function renderMatchCards(matches, senderEmail) {
   const grid = document.getElementById('matchesGrid');
   grid.innerHTML = '';
   matches.forEach((m, i) => {
-    const score = Math.round((m.score || m.compatibilityScore || 0) * 100) / 100;
+    const name = m.name || (m.user && m.user.name) || (m.matchedUser && m.matchedUser.name) || 'Unknown';
+    const userEmail = m.email || (m.user && m.user.email) || (m.matchedUser && m.matchedUser.email) || '';
+    const score = Math.round((m.score || m.compatibilityScore || m.matchScore || 0));
     const skills = (m.skills || m.complementarySkills || []);
+    const matchedUserData = (m.user || m.matchedUser);
     const div = document.createElement('div');
     div.className = 'member-card';
     div.style.animationDelay = `${i * 0.05}s`;
     div.innerHTML = `
       <div class="card-header">
-        <div class="card-avatar">${avatarInitials(m.name)}</div>
+        <div class="card-avatar">${avatarInitials(name)}</div>
         <div class="card-meta">
-          <div class="card-name">${escHtml(m.name || 'Unknown')}</div>
-          <div class="card-email">${escHtml(m.email || '')}</div>
+          <div class="card-name">${escHtml(name)}</div>
+          <div class="card-email">${escHtml(userEmail)}</div>
         </div>
         ${scoreRing(score)}
       </div>
       <div class="card-info-row">
-        ${infoItem(clockIcon(), m.availability ? `${m.availability}h/week` : '—')}
-        ${infoItem(roleIcon(), m.role || '—')}
-        ${infoItem(goalIcon(), m.goal || '—')}
+        ${infoItem(clockIcon(), (matchedUserData && matchedUserData.availability) ? `${matchedUserData.availability}h/week` : (m.availability ? `${m.availability}h/week` : '—'))}
+        ${infoItem(roleIcon(), (matchedUserData && matchedUserData.role) || m.role || '—')}
+        ${infoItem(goalIcon(), (matchedUserData && matchedUserData.goal) || m.goal || '—')}
       </div>
       <div class="tag-row">
-        ${tagHtml(m.goal, 'goal')}
-        ${tagHtml(m.role, 'role')}
+        ${tagHtml((matchedUserData && matchedUserData.goal) || m.goal, 'goal')}
+        ${tagHtml((matchedUserData && matchedUserData.role) || m.role, 'role')}
         ${skills.slice(0, 4).map(s => tagHtml(typeof s === 'string' ? s : (s.name || s.skillName), 'skill')).join('')}
         ${skills.length > 4 ? `<span class="tag tag-skill">+${skills.length - 4}</span>` : ''}
       </div>
-      ${m.reason || m.whyMatch ? `<details class="why-match"><summary>Why this match?</summary><p>${escHtml(m.reason || m.whyMatch)}</p></details>` : ''}
+      ${m.reasons && m.reasons.length > 0 ? `<details class="why-match"><summary>Why this match?</summary><p>${escHtml(m.reasons.join(', '))}</p></details>` : ''}
       <div class="card-actions">
-        <button class="btn btn-primary" onclick="openConnectModal('${escHtml(m.email)}', '${escHtml(m.name)}')">
+        <button class="btn btn-primary" onclick="openConnectModal('${escHtml(userEmail)}', '${escHtml(name)}')">
           ${connectIcon()} Connect
         </button>
       </div>
@@ -422,7 +436,7 @@ async function sendRequest() {
     const res = await fetch(`${API}/api/requests`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ senderEmail, receiverEmail: pendingReceiverEmail })
+      body: JSON.stringify({ sender: senderEmail, receiver: pendingReceiverEmail })
     });
     const text = await res.text();
     if (res.ok) {
@@ -438,8 +452,8 @@ async function sendRequest() {
 
 /* ─── LOAD INBOX — GET /api/requests?email=... ─── */
 async function loadInbox() {
-  const email = document.getElementById('inboxEmailInput').value.trim();
-  if (!email) { toast('Enter your email', 'error'); return; }
+  const email = currentUserEmail;
+  if (!email) { showEl('inboxEmpty', true); document.getElementById('inboxGrid').innerHTML = '<p style="text-align:center;width:100%">Please register or load your profile first.</p>'; return; }
 
   showEl('inboxLoading', true);
   showEl('inboxEmpty', false);
@@ -449,9 +463,12 @@ async function loadInbox() {
     const res = await fetch(`${API}/api/requests?email=${encodeURIComponent(email)}`);
     showEl('inboxLoading', false);
     if (!res.ok) { showEl('inboxEmpty', true); toast('Could not load inbox', 'error'); return; }
-    const requests = await res.json();
+    const data = await res.json();
+    const incoming = (data.incoming || []).map(r => ({ ...r, _type: 'incoming' }));
+    const sent = (data.sent || []).map(r => ({ ...r, _type: 'sent' }));
+    const requests = incoming.concat(sent);
     if (!requests || requests.length === 0) { showEl('inboxEmpty', true); return; }
-    updateInboxBadge(requests.filter(r => r.status === 'PENDING').length);
+    updateInboxBadge(incoming.filter(r => r.status === 'PENDING').length);
     renderInbox(requests);
   } catch (e) {
     showEl('inboxLoading', false);
@@ -464,19 +481,24 @@ function renderInbox(requests) {
   const grid = document.getElementById('inboxGrid');
   grid.innerHTML = '';
   requests.forEach(req => {
+    const isPending = req.status === 'PENDING';
+    const isAccepted = req.status === 'ACCEPTED';
+    const isIncoming = req._type === 'incoming';
+    const displayName = isIncoming ? (req.senderName || req.senderEmail) : (req.receiverName || req.receiverEmail);
+    const displayEmail = isIncoming ? (req.senderEmail || '') : (req.receiverEmail || '');
+
     const div = document.createElement('div');
     div.className = 'inbox-card';
     div.id = `req-${req.id}`;
-    const isPending = req.status === 'PENDING';
-    const isAccepted = req.status === 'ACCEPTED';
     div.innerHTML = `
-      <div class="card-avatar" style="width:40px;height:40px;font-size:14px">${avatarInitials(req.senderName || req.senderEmail)}</div>
+      <div class="card-avatar" style="width:40px;height:40px;font-size:14px">${avatarInitials(displayName)}</div>
       <div class="inbox-card-info">
-        <div class="inbox-sender">${escHtml(req.senderName || 'Unknown')}</div>
-        <div class="inbox-email">${escHtml(req.senderEmail || '')}</div>
-        ${isAccepted && req.senderEmail ? `<div class="contact-reveal" style="margin-top:8px">✓ Connected — ${escHtml(req.senderEmail)}</div>` : ''}
+        <div class="inbox-sender">${escHtml(displayName)}</div>
+        <div class="inbox-email">${escHtml(displayEmail)}</div>
+        <div class="inbox-direction">${isIncoming ? '📩 Incoming request' : '📤 Sent request'}</div>
+        ${isAccepted && displayEmail ? `<div class="contact-reveal" style="margin-top:8px">✓ Connected — ${escHtml(displayEmail)}</div>` : ''}
       </div>
-      ${isPending ? `
+      ${isPending && isIncoming ? `
       <div class="inbox-actions">
         <button class="btn btn-success" onclick="respondRequest(${req.id}, 'ACCEPTED')">Accept</button>
         <button class="btn btn-danger-ghost" onclick="respondRequest(${req.id}, 'REJECTED')">Reject</button>
@@ -491,11 +513,12 @@ function renderInbox(requests) {
 
 /* ─── RESPOND TO REQUEST — PUT /api/requests ─── */
 async function respondRequest(requestId, status) {
+  const currentEmail = currentUserEmail;
   try {
     const res = await fetch(`${API}/api/requests`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ requestId, status })
+      body: JSON.stringify({ id: requestId, status: status, actor: currentEmail })
     });
     if (res.ok) {
       toast(status === 'ACCEPTED' ? 'Request accepted!' : 'Request rejected', status === 'ACCEPTED' ? 'success' : 'info');
