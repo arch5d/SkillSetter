@@ -48,7 +48,13 @@ public class JSONHelper {
     }
 
     public static String matchResultToJSON(MatchEngine.MatchResult result) {
-        String reasonsStr = String.join(", ", result.getReasons());
+        StringBuilder reasonsArr = new StringBuilder("[");
+        List<String> reasons = result.getReasons();
+        for (int i = 0; i < reasons.size(); i++) {
+            reasonsArr.append("\"").append(escape(reasons.get(i))).append("\"");
+            if (i < reasons.size() - 1) reasonsArr.append(",");
+        }
+        reasonsArr.append("]");
         
         StringBuilder compSkills = new StringBuilder("[");
         List<Skill> cSkills = result.getComplementarySkills();
@@ -61,7 +67,7 @@ public class JSONHelper {
         return "{" +
                "\"user\":" + toJSON(result.getMatchedUser()) + "," +
                "\"score\":" + result.getScore() + "," +
-               "\"reason\":\"" + escape(reasonsStr) + "\"," +
+               "\"reasons\":" + reasonsArr.toString() + "," +
                "\"complementarySkills\":" + compSkills.toString() +
                "}";
     }

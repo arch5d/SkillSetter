@@ -96,8 +96,10 @@ public class DatabaseManager {
         try (Connection conn = openConnection()) {
             conn.setAutoCommit(false);
 
+            String normalizedEmail = user.getEmail().trim().toLowerCase();
+
             try (PreparedStatement pstmt = conn.prepareStatement(upsertUser)) {
-                pstmt.setString(1, user.getEmail());
+                pstmt.setString(1, normalizedEmail);
                 pstmt.setString(2, user.getName());
                 pstmt.setInt(3, user.getAvailabilityHoursPerWeek());
                 pstmt.setString(4, user.getRole().name());
@@ -112,13 +114,13 @@ public class DatabaseManager {
             }
 
             try (PreparedStatement deleteStmt = conn.prepareStatement(deleteSkills)) {
-                deleteStmt.setString(1, user.getEmail());
+                deleteStmt.setString(1, normalizedEmail);
                 deleteStmt.executeUpdate();
             }
 
             try (PreparedStatement pstmtSkills = conn.prepareStatement(insertSkill)) {
                 for (Skill skill : user.getSkills()) {
-                    pstmtSkills.setString(1, user.getEmail());
+                    pstmtSkills.setString(1, normalizedEmail);
                     pstmtSkills.setString(2, skill.getName());
                     pstmtSkills.setString(3, skill.getLevel().name());
                     pstmtSkills.executeUpdate();
@@ -143,7 +145,7 @@ public class DatabaseManager {
             PreparedStatement pstmtSkills = conn.prepareStatement(querySkills);
 
             while (rsUsers.next()) {
-                String email = rsUsers.getString("email");
+                String email = rsUsers.getString("email").toLowerCase();
                 String name = rsUsers.getString("name");
                 int availability = rsUsers.getInt("availability");
                 User.Role role = User.Role.valueOf(rsUsers.getString("role"));
@@ -220,7 +222,7 @@ public class DatabaseManager {
         String sql = "DELETE FROM users WHERE email = ?";
         try (Connection conn = openConnection();
              PreparedStatement pstmt = conn.prepareStatement(sql)) {
-            pstmt.setString(1, email);
+            pstmt.setString(1, email.trim().toLowerCase());
             pstmt.executeUpdate();
         } catch (SQLException e) {
             e.printStackTrace();
@@ -304,14 +306,14 @@ public class DatabaseManager {
                 "FROM requests r JOIN users u ON u.email = r.sender_email WHERE r.receiver_email = ? ORDER BY r.id DESC";
         try (Connection conn = openConnection();
              PreparedStatement pstmt = conn.prepareStatement(sql)) {
-            pstmt.setString(1, receiverEmail);
+            pstmt.setString(1, receiverEmail.trim().toLowerCase());
             ResultSet rs = pstmt.executeQuery();
             while (rs.next()) {
                 requests.add(new ConnectionRequest(
                     rs.getInt("id"),
                     rs.getString("sender_email"),
                     rs.getString("sender_name"),
-                    receiverEmail,
+                    receiverEmail.trim().toLowerCase(),
                     null,
                     rs.getString("status")
                 ));
@@ -328,12 +330,12 @@ public class DatabaseManager {
                 "FROM requests r JOIN users u ON u.email = r.receiver_email WHERE r.sender_email = ? ORDER BY r.id DESC";
         try (Connection conn = openConnection();
              PreparedStatement pstmt = conn.prepareStatement(sql)) {
-            pstmt.setString(1, senderEmail);
+            pstmt.setString(1, senderEmail.trim().toLowerCase());
             ResultSet rs = pstmt.executeQuery();
             while (rs.next()) {
                 requests.add(new ConnectionRequest(
                     rs.getInt("id"),
-                    senderEmail,
+                    senderEmail.trim().toLowerCase(),
                     null,
                     rs.getString("receiver_email"),
                     rs.getString("receiver_name"),
