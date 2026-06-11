@@ -1,140 +1,303 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-theme="dark">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SkillSetter - Find Your Team</title>
-    <link rel="stylesheet" href="style.css">
-    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SkillSetter — Find Your Perfect Team</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;1,9..40,300&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="style.css" />
 </head>
 <body>
-    <div class="bg-orb orb-one" aria-hidden="true"></div>
-    <div class="bg-orb orb-two" aria-hidden="true"></div>
-    <div class="bg-grid" aria-hidden="true"></div>
 
-    <header class="header">
-        <div class="logo">SkillSetter</div>
-        <nav id="nav-actions" class="hidden">
-            <button onclick="deleteProfile()" class="btn-secondary" style="color: var(--error); border-color: var(--error);">Delete Profile</button>
-            <button onclick="logout()" class="btn-secondary">Logout</button>
-        </nav>
-    </header>
+  <!-- ─── SIDEBAR NAV ─── -->
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-header">
+      <div class="logo-mark">
+        <svg width="28" height="28" viewBox="0 0 28 28" fill="none">
+          <rect width="28" height="28" rx="8" fill="var(--accent)"/>
+          <path d="M8 14h5m0 0V9m0 5v5m4-8h3m-3 6h3" stroke="#fff" stroke-width="1.8" stroke-linecap="round"/>
+        </svg>
+        <span class="logo-text">SkillSetter</span>
+      </div>
+      <button class="sidebar-toggle" id="sidebarClose" aria-label="Close menu">
+        <svg width="18" height="18" viewBox="0 0 18 18" fill="none"><path d="M4 4l10 10M14 4L4 14" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+      </button>
+    </div>
 
-    <main class="container">
-        <!-- Auth Section -->
-        <section id="auth-section" class="card">
-            <h2>Welcome to SkillSetter</h2>
-            <p>Find compatible teammates based on skills, goals, and availability.</p>
-            <div class="tabs">
-                <button class="tab active" onclick="showLogin(true)">Login</button>
-                <button class="tab" onclick="showLogin(false)">Register</button>
-            </div>
+    <nav class="sidebar-nav">
+      <button class="nav-item active" data-view="register">
+        <svg width="18" height="18" viewBox="0 0 18 18" fill="none"><circle cx="9" cy="6" r="3" stroke="currentColor" stroke-width="1.5"/><path d="M3 15c0-3.314 2.686-6 6-6s6 2.686 6 6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+        <span>Register / Profile</span>
+      </button>
+      <button class="nav-item" data-view="matches">
+        <svg width="18" height="18" viewBox="0 0 18 18" fill="none"><path d="M9 3C6.239 3 4 5.239 4 8s2.239 5 5 5 5-2.239 5-5-2.239-5-5-5z" stroke="currentColor" stroke-width="1.5"/><path d="M13.5 13.5L16 16" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><path d="M6 8h6M9 5v6" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>
+        <span>Find Matches</span>
+      </button>
+      <button class="nav-item" data-view="inbox">
+        <svg width="18" height="18" viewBox="0 0 18 18" fill="none"><rect x="2" y="4" width="14" height="11" rx="2" stroke="currentColor" stroke-width="1.5"/><path d="M2 7l7 4.5L16 7" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+        <span>Inbox</span>
+        <span class="badge" id="inboxBadge" style="display:none"></span>
+      </button>
+      <button class="nav-item" data-view="users">
+        <svg width="18" height="18" viewBox="0 0 18 18" fill="none"><circle cx="6" cy="7" r="2.5" stroke="currentColor" stroke-width="1.5"/><circle cx="12" cy="7" r="2.5" stroke="currentColor" stroke-width="1.5"/><path d="M1 15c0-2.761 2.239-5 5-5h.5M17 15c0-2.761-2.239-5-5-5h-.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><path d="M6.5 10C8 10 10 10 11.5 10" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+        <span>All Members</span>
+      </button>
+    </nav>
 
-            <div id="login-form">
-                <div class="form-group">
-                    <label>Email</label>
-                    <input type="email" id="login-email" placeholder="Enter your email" />
-                </div>
-                <button class="btn-primary full-width" onclick="login()">Login</button>
-                <div id="login-error" class="error-msg"></div>
-            </div>
+    <div class="sidebar-footer">
+      <div class="user-pill" id="sidebarUserPill" style="display:none">
+        <div class="user-avatar" id="sidebarAvatar"></div>
+        <div class="user-info">
+          <span class="user-name" id="sidebarUserName"></span>
+          <span class="user-email" id="sidebarUserEmail"></span>
+        </div>
+      </div>
+      <button class="theme-toggle" id="themeToggle" aria-label="Toggle theme">
+        <svg class="icon-sun" width="16" height="16" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="3" stroke="currentColor" stroke-width="1.5"/><path d="M8 1v2M8 13v2M1 8h2M13 8h2M3.05 3.05l1.41 1.41M11.54 11.54l1.41 1.41M3.05 12.95l1.41-1.41M11.54 4.46l1.41-1.41" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>
+        <svg class="icon-moon" width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M13.5 10A6 6 0 016 2.5a6 6 0 100 11 6 6 0 007.5-3.5z" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </button>
+    </div>
+  </aside>
 
-            <div id="register-form" class="hidden">
-                <div class="form-group">
-                    <label>Name</label>
-                    <input type="text" id="reg-name" placeholder="John Doe" />
-                </div>
-                <div class="form-group">
-                    <label>Email</label>
-                    <input type="email" id="reg-email" placeholder="john@example.com" />
-                </div>
-                <div class="form-group">
-                    <label>Availability (hrs/week)</label>
-                    <input type="number" id="reg-availability" placeholder="10" />
-                </div>
-                <div class="form-group">
-                    <label>Role</label>
-                    <select id="reg-role" onchange="toggleTeamSize()">
-                        <option value="TEAMMATE">Teammate</option>
-                        <option value="LEADER">Leader</option>
-                        <option value="LEARNER">Learner</option>
-                    </select>
-                </div>
-                <div class="form-group hidden" id="team-size-group">
-                    <label>Team Size Preference</label>
-                    <input type="number" id="reg-teamsize" placeholder="4" />
-                </div>
-                <div class="form-group">
-                    <label>Goal</label>
-                    <select id="reg-goal">
-                        <option value="HACKATHON">Hackathon</option>
-                        <option value="PBL">PBL</option>
-                        <option value="STARTUP">Startup</option>
-                        <option value="STUDY">Study Group</option>
-                    </select>
-                </div>
-                <div class="form-group">
-                    <label>Team Mode</label>
-                    <select id="reg-mode">
-                        <option value="JOIN">Join Team (Looking for a team)</option>
-                        <option value="BUILD">Build Team (Hosting a team)</option>
-                    </select>
-                </div>
-                
-                <div class="skills-section">
-                    <h3>Skills</h3>
-                    <div class="skill-input-group">
-                        <input type="text" id="skill-name" placeholder="E.g., Java, React, UI/UX" />
-                        <select id="skill-level">
-                            <option value="BEGINNER">Beginner</option>
-                            <option value="INTERMEDIATE">Intermediate</option>
-                            <option value="ADVANCED">Advanced</option>
-                            <option value="EXPERT">Expert</option>
-                        </select>
-                        <button class="btn-secondary" onclick="addSkill()">Add</button>
-                    </div>
-                    <ul id="skill-list" class="skill-list"></ul>
-                </div>
+  <!-- ─── MOBILE TOPBAR ─── -->
+  <header class="topbar">
+    <button class="menu-btn" id="menuBtn" aria-label="Open menu">
+      <svg width="20" height="20" viewBox="0 0 20 20" fill="none"><path d="M3 6h14M3 10h14M3 14h14" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+    </button>
+    <div class="logo-mark">
+      <svg width="24" height="24" viewBox="0 0 28 28" fill="none"><rect width="28" height="28" rx="8" fill="var(--accent)"/><path d="M8 14h5m0 0V9m0 5v5m4-8h3m-3 6h3" stroke="#fff" stroke-width="1.8" stroke-linecap="round"/></svg>
+      <span class="logo-text">SkillSetter</span>
+    </div>
+    <div style="width:44px"></div>
+  </header>
 
-                <button class="btn-primary full-width" onclick="register()">Create Profile</button>
-                <div id="reg-error" class="error-msg"></div>
-            </div>
-        </section>
+  <!-- ─── OVERLAY ─── -->
+  <div class="overlay" id="overlay"></div>
 
-        <!-- Dashboard Section -->
-        <section id="dashboard-section" class="hidden card surface-panel">
-            <div class="dashboard-header">
-                <h2>Your Matches</h2>
-                <div id="user-info" class="badge"></div>
-            </div>
-            <p id="dashboard-subtitle">Here are your highest compatibility matches based on your profile.</p>
-            
-            <div class="actions-row">
-                <button id="btn-matches" class="btn-primary" onclick="showTab('matches')">Matches</button>
-                <button id="btn-requests" class="btn-secondary" onclick="showTab('requests')">Requests</button>
-            </div>
+  <!-- ─── MAIN CONTENT ─── -->
+  <main class="main-content">
 
-            <div id="matches-container" class="matches-grid">
-                <!-- Matches injected via JS -->
-            </div>
-            
-            <div id="requests-container" class="matches-grid hidden">
-                <!-- Requests injected via JS -->
-            </div>
-        </section>
+    <!-- ════════ REGISTER / PROFILE VIEW ════════ -->
+    <section class="view active" id="view-register">
+      <div class="view-header">
+        <div>
+          <h1 class="view-title">Register / Update Profile</h1>
+          <p class="view-subtitle">Create your profile and let the right team find you.</p>
+        </div>
+      </div>
 
-        <!-- Modal for Request Details -->
-        <div id="contact-modal" class="modal hidden">
-            <div class="modal-content card">
-                <h3>Contact & Connect</h3>
-                <p>You have decided to accept this match. Here are the contact details:</p>
-                <div id="modal-details" class="contact-details"></div>
-                <button class="btn-primary" style="margin-top: 1rem;" onclick="closeModal()">Done</button>
-            </div>
+      <div class="form-card">
+        <div class="form-grid-2">
+          <div class="field">
+            <label class="field-label">Full Name</label>
+            <input type="text" id="regName" class="field-input" placeholder="e.g. Aryan Sharma" autocomplete="name" />
+          </div>
+          <div class="field">
+            <label class="field-label">Email Address <span class="required">*</span></label>
+            <input type="email" id="regEmail" class="field-input" placeholder="you@example.com" autocomplete="email" />
+          </div>
         </div>
 
-    </main>
+        <div class="section-divider"><span>Skills</span></div>
 
-    <script src="app.js"></script>
+        <div class="field">
+          <label class="field-label">Add Skills</label>
+          <div class="skill-input-row">
+            <select id="skillSelect" class="field-select">
+              <option value="">— Choose a skill —</option>
+            </select>
+            <select id="levelSelect" class="field-select level-select">
+              <option value="Beginner">Beginner</option>
+              <option value="Intermediate" selected>Intermediate</option>
+              <option value="Advanced">Advanced</option>
+              <option value="Expert">Expert</option>
+            </select>
+            <button class="btn btn-secondary" id="addSkillBtn" type="button">Add</button>
+          </div>
+          <div class="custom-skill-row">
+            <input type="text" id="customSkillInput" class="field-input" placeholder="Or type a custom skill…" />
+            <button class="btn btn-ghost" id="addCustomSkillBtn" type="button">+ Custom</button>
+          </div>
+        </div>
+
+        <div class="skill-chips" id="skillChips"><p class="empty-hint">No skills added yet.</p></div>
+
+        <div class="section-divider"><span>Details</span></div>
+
+        <div class="form-grid-2">
+          <div class="field">
+            <label class="field-label">Availability (hrs/week)</label>
+            <input type="number" id="regAvail" class="field-input" placeholder="e.g. 15" min="1" max="60" />
+          </div>
+          <div class="field">
+            <label class="field-label">Role</label>
+            <select id="regRole" class="field-select">
+              <option value="Leader">Leader</option>
+              <option value="Teammate" selected>Teammate</option>
+              <option value="Learner">Learner</option>
+            </select>
+          </div>
+          <div class="field">
+            <label class="field-label">Goal</label>
+            <select id="regGoal" class="field-select">
+              <option value="Hackathon">Hackathon</option>
+              <option value="PBL" selected>PBL Project</option>
+              <option value="Startup">Startup</option>
+              <option value="Study">Study Group</option>
+            </select>
+          </div>
+          <div class="field">
+            <label class="field-label">Mode</label>
+            <select id="regMode" class="field-select" onchange="toggleTeamSize()">
+              <option value="Join">Join a Team</option>
+              <option value="Build">Build a Team</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="field" id="teamSizeField" style="display:none">
+          <label class="field-label">Desired Team Size</label>
+          <input type="number" id="regTeamSize" class="field-input" placeholder="e.g. 4" min="2" max="20" />
+        </div>
+
+        <div class="form-actions">
+          <button class="btn btn-primary btn-lg" id="registerBtn" type="button" onclick="registerUser()">
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M8 2v12M2 8h12" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+            Register / Update Profile
+          </button>
+          <button class="btn btn-ghost" type="button" onclick="loadProfile()">
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M2 8a6 6 0 1012 0A6 6 0 002 8z" stroke="currentColor" stroke-width="1.5"/><path d="M8 5v3l2 2" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+            Load My Profile
+          </button>
+          <button class="btn btn-danger-ghost" type="button" onclick="deleteProfile()">
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M3 4h10M6 4V3h4v1M5 4v8h6V4H5z" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            Delete Profile
+          </button>
+        </div>
+      </div>
+
+      <div id="registerStatus" class="status-message" style="display:none"></div>
+    </section>
+
+    <!-- ════════ MATCHES VIEW ════════ -->
+    <section class="view" id="view-matches">
+      <div class="view-header">
+        <div>
+          <h1 class="view-title">Find Matches</h1>
+          <p class="view-subtitle">Discover compatible teammates ranked by compatibility score.</p>
+        </div>
+        <div class="search-bar-inline">
+          <input type="email" id="matchEmailInput" class="field-input" placeholder="Your email…" />
+          <button class="btn btn-primary" onclick="findMatches()">
+            <svg width="15" height="15" viewBox="0 0 15 15" fill="none"><circle cx="6.5" cy="6.5" r="4.5" stroke="currentColor" stroke-width="1.5"/><path d="M11 11l2.5 2.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+            Search
+          </button>
+        </div>
+      </div>
+
+      <div id="matchesLoading" class="loading-state" style="display:none">
+        <div class="spinner"></div>
+        <p>Finding your best matches…</p>
+      </div>
+
+      <div id="matchesEmpty" class="empty-state" style="display:none">
+        <div class="empty-icon">
+          <svg width="48" height="48" viewBox="0 0 48 48" fill="none"><circle cx="22" cy="22" r="14" stroke="var(--accent)" stroke-width="2" opacity=".4"/><path d="M32 32l8 8" stroke="var(--accent)" stroke-width="2" stroke-linecap="round" opacity=".4"/><path d="M17 22h10M22 17v10" stroke="var(--accent)" stroke-width="2" stroke-linecap="round"/></svg>
+        </div>
+        <h3>No matches found</h3>
+        <p>Try registering first or check your email address.</p>
+      </div>
+
+      <div class="cards-grid" id="matchesGrid"></div>
+    </section>
+
+    <!-- ════════ INBOX VIEW ════════ -->
+    <section class="view" id="view-inbox">
+      <div class="view-header">
+        <div>
+          <h1 class="view-title">Inbox</h1>
+          <p class="view-subtitle">Accept or reject incoming connection requests.</p>
+        </div>
+        <div class="search-bar-inline">
+          <input type="email" id="inboxEmailInput" class="field-input" placeholder="Your email…" />
+          <button class="btn btn-primary" onclick="loadInbox()">
+            <svg width="15" height="15" viewBox="0 0 15 15" fill="none"><rect x="1" y="3" width="13" height="10" rx="2" stroke="currentColor" stroke-width="1.5"/><path d="M1 6l6.5 4L14 6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+            Load Inbox
+          </button>
+        </div>
+      </div>
+
+      <div id="inboxLoading" class="loading-state" style="display:none">
+        <div class="spinner"></div>
+        <p>Loading your inbox…</p>
+      </div>
+
+      <div id="inboxEmpty" class="empty-state" style="display:none">
+        <div class="empty-icon">
+          <svg width="48" height="48" viewBox="0 0 48 48" fill="none"><rect x="6" y="10" width="36" height="28" rx="4" stroke="var(--accent)" stroke-width="2" opacity=".4"/><path d="M6 18l18 11 18-11" stroke="var(--accent)" stroke-width="2" stroke-linecap="round"/></svg>
+        </div>
+        <h3>Inbox is empty</h3>
+        <p>No pending connection requests.</p>
+      </div>
+
+      <div class="cards-grid cards-grid--single" id="inboxGrid"></div>
+    </section>
+
+    <!-- ════════ ALL USERS VIEW ════════ -->
+    <section class="view" id="view-users">
+      <div class="view-header">
+        <div>
+          <h1 class="view-title">All Members</h1>
+          <p class="view-subtitle">Browse everyone on the platform.</p>
+        </div>
+        <div class="search-bar-inline">
+          <input type="text" id="usersSearch" class="field-input" placeholder="Filter by name or skill…" oninput="filterUsers()" />
+        </div>
+      </div>
+
+      <div id="usersLoading" class="loading-state" style="display:none">
+        <div class="spinner"></div>
+        <p>Loading members…</p>
+      </div>
+
+      <div id="usersEmpty" class="empty-state" style="display:none">
+        <div class="empty-icon">
+          <svg width="48" height="48" viewBox="0 0 48 48" fill="none"><circle cx="18" cy="18" r="8" stroke="var(--accent)" stroke-width="2" opacity=".4"/><circle cx="30" cy="18" r="8" stroke="var(--accent)" stroke-width="2" opacity=".4"/><path d="M6 38c0-8 5.373-12 12-12h12c6.627 0 12 4 12 12" stroke="var(--accent)" stroke-width="2" stroke-linecap="round" opacity=".4"/></svg>
+        </div>
+        <h3>No members yet</h3>
+        <p>Be the first to register!</p>
+      </div>
+
+      <div class="cards-grid" id="usersGrid"></div>
+    </section>
+
+  </main>
+
+  <!-- ─── TOAST ─── -->
+  <div class="toast-container" id="toastContainer"></div>
+
+  <!-- ─── CONNECTION MODAL ─── -->
+  <div class="modal-backdrop" id="connectModal" style="display:none" onclick="closeModal(event)">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h2 id="modalTitle">Send Connection Request</h2>
+        <button class="modal-close" onclick="document.getElementById('connectModal').style.display='none'">
+          <svg width="18" height="18" viewBox="0 0 18 18" fill="none"><path d="M4 4l10 10M14 4L4 14" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+        </button>
+      </div>
+      <div class="field">
+        <label class="field-label">Your Email</label>
+        <input type="email" id="modalSenderEmail" class="field-input" placeholder="your@email.com" />
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-ghost" onclick="document.getElementById('connectModal').style.display='none'">Cancel</button>
+        <button class="btn btn-primary" onclick="sendRequest()">Send Request</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
 </body>
 </html>
